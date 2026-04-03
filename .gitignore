@@ -1,4 +1,5 @@
 .venv/
+model_cache.joblib
 __pycache__/
 *.pyc
-model_cache.joblib
+
