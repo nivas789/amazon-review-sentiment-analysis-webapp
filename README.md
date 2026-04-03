@@ -6,36 +6,36 @@ This project analyzes customer reviews for Amazon musical instruments and predic
 
 **Project Type:** NLP + Machine Learning + Web Application  
 **Dataset:** [Amazon Musical Instruments Reviews (Kaggle)](https://www.kaggle.com/eswarchandt/amazon-music-reviews)  
-**Status:** ✅ Complete & Production-Ready
+**Status:**  Complete & Production-Ready
 
 ---
 
 ## 🎯 Key Features
 
-### 1. **Interactive User Input** ✅
+### 1. **Interactive User Input** 
 - Users can type their own reviews and get instant sentiment predictions
 - Real-time text processing and feature vectorization
 - Displays confidence scores for each sentiment category
 
-### 2. **Clear Sentiment Output** ✅
+### 2. **Clear Sentiment Output** 
 - Shows sentiment as readable text: **Positive**, **Neutral**, or **Negative**
 - Includes confidence percentage (0-100%)
 - Visual confidence breakdown using bar charts
 
-### 3. **Model Comparison** ✅
+### 3. **Model Comparison** 
 The app trains and compares 3 different machine learning models:
 - **Logistic Regression** (~88% accuracy) - Best overall
 - **Naive Bayes** (~81% accuracy) - Fast & probabilistic
 - **Support Vector Machine** (~88% accuracy) - Robust
 
-### 4. **Rich Visualizations** ✅
+### 4. **Rich Visualizations** 
 - Accuracy comparison bar charts
 - Confusion matrix heatmaps
 - Classification reports with metrics
 - Sentiment distribution graphs
 - Per-prediction confidence visualization
 
-### 5. **Streamlit Web Interface** ✅
+### 5. **Streamlit Web Interface** 
 - Professional, responsive dashboard
 - Sidebar controls for easy navigation
 - Tab-based organization
@@ -54,15 +54,15 @@ The app trains and compares 3 different machine learning models:
 - Negative: 4.5% (467 reviews)
 
 **Data Preprocessing:**
-- ✅ Text cleaning (lowercase, punctuation removal, URL removal)
-- ✅ Tokenization and lemmatization
-- ✅ Stopword removal (preserving "not" for sentiment)
-- ✅ TF-IDF vectorization (5,000 bigram features)
-- ✅ SMOTE balancing for imbalanced classes
+- Text cleaning (lowercase, punctuation removal, URL removal)
+- Tokenization and lemmatization
+- Stopword removal (preserving "not" for sentiment)
+- TF-IDF vectorization (5,000 bigram features)
+- SMOTE balancing for imbalanced classes
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Installation (30 seconds)
 
@@ -88,7 +88,7 @@ The app will open at `http://localhost:8501`
 
 ### 1. **Enter a Review**
    - Type in the sidebar text box
-   - Click "🔮 Predict Sentiment"
+   - Click " Predict Sentiment"
 
 ### 2. **View Results**
    - See sentiment label (Positive/Neutral/Negative)
@@ -125,11 +125,11 @@ The app will open at `http://localhost:8501`
 
 ---
 
-## 📁 Project Structure
+##  Project Structure
 
 ```
 Sentiment-Analysis-main/
-├── streamlit_app.py              # 🌟 Main web application
+├── streamlit_app.py              #  Main web application
 ├── Sentiment Analysis.py          # Original notebook (script version)
 ├── Sentiment Analysis.ipynb       # Original Jupyter notebook
 ├── Instruments_Reviews.csv        # Dataset
@@ -158,13 +158,13 @@ Sentiment-Analysis-main/
 
 This project demonstrates professional-grade expertise in:
 
-✅ **Data Preprocessing** - Text cleaning, normalization, lemmatization  
-✅ **Feature Engineering** - TF-IDF vectorization, dimensionality  
-✅ **Model Selection & Training** - Multiple classifiers, hyperparameter tuning  
-✅ **Model Evaluation** - Confusion matrix, precision, recall, F1-score  
-✅ **Web Development** - Streamlit dashboard creation  
-✅ **NLP Fundamentals** - Sentiment classification, text vectorization  
-✅ **Software Best Practices** - Code organization, documentation, caching  
+ **Data Preprocessing** - Text cleaning, normalization, lemmatization  
+ **Feature Engineering** - TF-IDF vectorization, dimensionality  
+ **Model Selection & Training** - Multiple classifiers, hyperparameter tuning  
+ **Model Evaluation** - Confusion matrix, precision, recall, F1-score  
+ **Web Development** - Streamlit dashboard creation  
+ **NLP Fundamentals** - Sentiment classification, text vectorization  
+ **Software Best Practices** - Code organization, documentation, caching  
 
 ---
 
@@ -174,26 +174,26 @@ This project demonstrates professional-grade expertise in:
 ```
 Input: "Great sound quality, very satisfied with this purchase!"
 Model: Logistic Regression
-Output: ✅ Positive (Confidence: 94.2%)
+Output:  Positive (Confidence: 94.2%)
 ```
 
 ### Negative Review
 ```
 Input: "Broke within a week, terrible quality, waste of money"
 Model: Logistic Regression
-Output: ❌ Negative (Confidence: 89.7%)
+Output:  Negative (Confidence: 89.7%)
 ```
 
 ### Neutral Review
 ```
 Input: "It works okay, not great but not bad either"
 Model: Logistic Regression
-Output: ⚖️ Neutral (Confidence: 72.5%)
+Output:  Neutral (Confidence: 72.5%)
 ```
 
 ---
 
-## 🔍 Troubleshooting
+##  Troubleshooting
 
 | Issue | Solution |
 |-------|----------|
@@ -204,7 +204,7 @@ Output: ⚖️ Neutral (Confidence: 72.5%)
 
 ---
 
-## 📚 References
+##  References
 
 - Original Notebook: [Google Colab](https://colab.research.google.com/drive/1Jb0-XtSdEoTIYw6suN4nzlao4vaXX0JY)
 - Dataset: [Kaggle](https://www.kaggle.com/eswarchandt/amazon-music-reviews)
@@ -214,9 +214,9 @@ Output: ⚖️ Neutral (Confidence: 72.5%)
 
 ---
 
-## ⭐ Project Highlights
+##  Project Highlights
 
-✨ **Production-Ready Code** - Professional structure and best practices  
+ **Production-Ready Code** - Professional structure and best practices  
 ✨ **Interactive Dashboard** - Real-time sentiment predictions  
 ✨ **Model Comparison** - 3 ML algorithms compared side-by-side  
 ✨ **Rich Visualizations** - Multiple charts and metrics  
@@ -224,4 +224,4 @@ Output: ⚖️ Neutral (Confidence: 72.5%)
 
 ---
 
-**Built with ❤️ for Machine Learning & NLP**
+**Built with  for Machine Learning & NLP**
