@@ -16,8 +16,6 @@ from nltk.stem import WordNetLemmatizer
 from nltk.corpus import stopwords
 import string
 import re
-from pathlib import Path
-from joblib import dump, load
 from wordcloud import WordCloud
 
 # Download only the NLTK data we still need
@@ -84,7 +82,7 @@ else:
 # ============================================
 # 1. DATA LOADING AND PREPROCESSING
 # ============================================
-@st.cache_resource
+@st.cache_data
 def load_and_prepare_data(uploaded_file=None):
     """Load and preprocess the dataset"""
     try:
@@ -132,22 +130,7 @@ def load_and_prepare_data(uploaded_file=None):
         st.error(f"Error loading dataset: {str(e)}")
         return None
 
-CACHE_PATH = Path("model_cache.joblib")
-
-def save_model_cache(tfidf, encoder, trained_models, model_results):
-    dump({
-        "tfidf": tfidf,
-        "encoder": encoder,
-        "trained_models": trained_models,
-        "model_results": model_results
-    }, CACHE_PATH)
-
-def load_model_cache():
-    if CACHE_PATH.exists():
-        return load(CACHE_PATH)
-    return None
-
-@st.cache_resource
+@st.cache_data
 def preprocess_reviews(texts):
     """Clean and process review text without punkt dependency"""
     stopwords_set = set(stopwords.words("english")) - {"not"}
@@ -165,7 +148,6 @@ def preprocess_reviews(texts):
         text = re.sub(r'https?://\S+|www\.\S+', ' ', text)
         text = re.sub(r'\n+', ' ', text)
 
-        # Regex-based tokenization to avoid NLTK punkt / punkt_tab dependency
         tokens = re.findall(r"\b[a-zA-Z]+\b", text)
 
         processed = [
@@ -224,32 +206,28 @@ if dataset is not None and len(dataset) > 0:
 
     st.sidebar.write(f"Training on {len(dataset)} rows using TF-IDF max_features={max_features}")
 
-    cache_data = load_model_cache()
-    if cache_data is not None and cache_data.get('tfidf') is not None and cache_data.get('trained_models') is not None and cache_data.get('model_results') is not None:
-        tfidf = cache_data['tfidf']
-        encoder = cache_data['encoder']
-        trained_models = cache_data['trained_models']
-        model_results = cache_data['model_results']
-        st.sidebar.success('Loaded models from cache.')
-    else:
-        dataset["reviews"] = preprocess_reviews(dataset["reviews"])
+    # Preprocess reviews
+    dataset["reviews"] = preprocess_reviews(dataset["reviews"])
 
-        tfidf = TfidfVectorizer(max_features=max_features, ngram_range=ngram_range)
-        X = tfidf.fit_transform(dataset["reviews"])
+    # Feature engineering
+    tfidf = TfidfVectorizer(max_features=max_features, ngram_range=ngram_range)
+    X = tfidf.fit_transform(dataset["reviews"])
 
-        encoder = LabelEncoder()
-        y = encoder.fit_transform(dataset["sentiment"])
+    # Encode labels
+    encoder = LabelEncoder()
+    y = encoder.fit_transform(dataset["sentiment"])
 
-        smote = SMOTE(random_state=42)
-        X_balanced, y_balanced = smote.fit_resample(X, y)
+    # Balance dataset with SMOTE
+    smote = SMOTE(random_state=42)
+    X_balanced, y_balanced = smote.fit_resample(X, y)
 
-        X_train, X_test, y_train, y_test = train_test_split(
-            X_balanced, y_balanced, test_size=0.25, random_state=42
-        )
+    # Split data
+    X_train, X_test, y_train, y_test = train_test_split(
+        X_balanced, y_balanced, test_size=0.25, random_state=42
+    )
 
-        trained_models, model_results = train_models(X_train, X_test, y_train, y_test, svm_kernel=svm_kernel)
-
-        save_model_cache(tfidf, encoder, trained_models, model_results)
+    # Train models fresh every deploy/run environment
+    trained_models, model_results = train_models(X_train, X_test, y_train, y_test, svm_kernel=svm_kernel)
 
     # ============================================
     # 2. SIDEBAR - INPUT & SETTINGS
