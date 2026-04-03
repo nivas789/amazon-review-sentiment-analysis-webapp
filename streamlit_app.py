@@ -20,8 +20,7 @@ from pathlib import Path
 from joblib import dump, load
 from wordcloud import WordCloud
 
-# Download NLTK data
-nltk.download("punkt", quiet=True)
+# Download only the NLTK data we still need
 nltk.download("stopwords", quiet=True)
 nltk.download("wordnet", quiet=True)
 
@@ -91,39 +90,33 @@ def load_and_prepare_data(uploaded_file=None):
     try:
         if uploaded_file is not None:
             dataset = pd.read_csv(uploaded_file)
-            # Assume columns: reviewText, summary, overall (like Amazon format)
-            # If not, try to detect
+
             if 'reviewText' in dataset.columns and 'summary' in dataset.columns and 'overall' in dataset.columns:
-                pass  # Standard format
+                pass
             else:
-                # Try to map common column names
                 text_cols = [col for col in dataset.columns if 'review' in col.lower() or 'text' in col.lower() or 'comment' in col.lower()]
                 summary_cols = [col for col in dataset.columns if 'summary' in col.lower() or 'title' in col.lower()]
                 rating_cols = [col for col in dataset.columns if 'rating' in col.lower() or 'overall' in col.lower() or 'score' in col.lower()]
-                
+
                 if text_cols:
                     dataset = dataset.rename(columns={text_cols[0]: 'reviewText'})
                 if summary_cols:
                     dataset = dataset.rename(columns={summary_cols[0]: 'summary'})
                 if rating_cols:
                     dataset = dataset.rename(columns={rating_cols[0]: 'overall'})
-                
-                # If still missing, show error
+
                 if not all(col in dataset.columns for col in ['reviewText', 'summary', 'overall']):
                     st.error("Uploaded CSV must contain columns for review text, summary, and rating (e.g., 'reviewText', 'summary', 'overall').")
                     return None
         else:
             dataset = pd.read_csv("Instruments_Reviews.csv")
-        
-        # Fill missing values
+
         dataset["reviewText"] = dataset["reviewText"].fillna("")
         dataset["summary"] = dataset["summary"].fillna("")
-        
-        # Concatenate review columns
+
         dataset["reviews"] = dataset["reviewText"] + " " + dataset["summary"]
         dataset.drop(columns=["reviewText", "summary"], inplace=True)
-        
-        # Label sentiments
+
         def label_sentiment(rows):
             if rows["overall"] > 3.0:
                 return "Positive"
@@ -131,9 +124,9 @@ def load_and_prepare_data(uploaded_file=None):
                 return "Negative"
             else:
                 return "Neutral"
-        
+
         dataset["sentiment"] = dataset.apply(label_sentiment, axis=1)
-        
+
         return dataset
     except Exception as e:
         st.error(f"Error loading dataset: {str(e)}")
@@ -156,34 +149,33 @@ def load_model_cache():
 
 @st.cache_resource
 def preprocess_reviews(texts):
-    """Clean and process review text"""
-    stopwords_set = set(stopwords.words("english")) - set(["not"])
+    """Clean and process review text without punkt dependency"""
+    stopwords_set = set(stopwords.words("english")) - {"not"}
     lemmatizer = WordNetLemmatizer()
-    
+
     processed_texts = []
-    
+
     for text in texts:
-        # Lowercase
-        text = text.lower()
-        
-        # Remove punctuation
-        punc = str.maketrans(string.punctuation, ' '*len(string.punctuation))
+        text = str(text).lower()
+
+        punc = str.maketrans(string.punctuation, ' ' * len(string.punctuation))
         text = text.translate(punc)
-        
-        # Remove numbers
-        text = re.sub(r'\d+', '', text)
-        
-        # Remove URLs
-        text = re.sub(r'https?://\S+|www\.\S+', '', text)
-        
-        # Remove newlines
-        text = re.sub('\n', '', text)
-        
-        # Tokenize and lemmatize
-        tokens = nltk.word_tokenize(text)
-        processed = [lemmatizer.lemmatize(word) for word in tokens if word not in stopwords_set]
+
+        text = re.sub(r'\d+', ' ', text)
+        text = re.sub(r'https?://\S+|www\.\S+', ' ', text)
+        text = re.sub(r'\n+', ' ', text)
+
+        # Regex-based tokenization to avoid NLTK punkt / punkt_tab dependency
+        tokens = re.findall(r"\b[a-zA-Z]+\b", text)
+
+        processed = [
+            lemmatizer.lemmatize(word)
+            for word in tokens
+            if word not in stopwords_set
+        ]
+
         processed_texts.append(" ".join(processed))
-    
+
     return processed_texts
 
 @st.cache_resource
@@ -194,15 +186,15 @@ def train_models(_X_train, _X_test, _y_train, _y_test, svm_kernel='linear'):
         'Naive Bayes': BernoulliNB(),
         'Support Vector Machine': SVC(random_state=42, kernel=svm_kernel, probability=True)
     }
-    
+
     trained_models = {}
     results = {}
-    
+
     for name, model in models.items():
         model.fit(_X_train, _y_train)
         y_pred = model.predict(_X_test)
         accuracy = accuracy_score(_y_test, y_pred)
-        
+
         trained_models[name] = model
         results[name] = {
             'accuracy': accuracy,
@@ -210,7 +202,7 @@ def train_models(_X_train, _X_test, _y_train, _y_test, svm_kernel='linear'):
             'confusion_matrix': confusion_matrix(_y_test, y_pred),
             'classification_report': classification_report(_y_test, y_pred, output_dict=True)
         }
-    
+
     return trained_models, results
 
 # Load data
@@ -219,7 +211,7 @@ dataset = load_and_prepare_data(uploaded_file if use_uploaded else None)
 if dataset is not None and len(dataset) > 0:
     st.sidebar.header("⚡ Speed Mode")
     fast_mode = st.sidebar.checkbox("Fast mode (faster training, lower accuracy)", value=True)
-    
+
     if fast_mode:
         dataset = dataset.sample(frac=0.5, random_state=42).reset_index(drop=True)
         max_features = 2000
@@ -229,10 +221,9 @@ if dataset is not None and len(dataset) > 0:
         max_features = 5000
         ngram_range = (2, 2)
         svm_kernel = 'rbf'
-    
+
     st.sidebar.write(f"Training on {len(dataset)} rows using TF-IDF max_features={max_features}")
 
-    # Try loading precomputed model cache
     cache_data = load_model_cache()
     if cache_data is not None and cache_data.get('tfidf') is not None and cache_data.get('trained_models') is not None and cache_data.get('model_results') is not None:
         tfidf = cache_data['tfidf']
@@ -241,31 +232,25 @@ if dataset is not None and len(dataset) > 0:
         model_results = cache_data['model_results']
         st.sidebar.success('Loaded models from cache.')
     else:
-        # Preprocess reviews
         dataset["reviews"] = preprocess_reviews(dataset["reviews"])
-        
-        # Feature engineering
+
         tfidf = TfidfVectorizer(max_features=max_features, ngram_range=ngram_range)
         X = tfidf.fit_transform(dataset["reviews"])
-        
-        # Encode labels
+
         encoder = LabelEncoder()
         y = encoder.fit_transform(dataset["sentiment"])
-        
-        # Balance dataset with SMOTE
+
         smote = SMOTE(random_state=42)
         X_balanced, y_balanced = smote.fit_resample(X, y)
-        
-        # Split data
+
         X_train, X_test, y_train, y_test = train_test_split(
             X_balanced, y_balanced, test_size=0.25, random_state=42
         )
-        
-        # Train models
+
         trained_models, model_results = train_models(X_train, X_test, y_train, y_test, svm_kernel=svm_kernel)
-        
+
         save_model_cache(tfidf, encoder, trained_models, model_results)
-    
+
     # ============================================
     # 2. SIDEBAR - INPUT & SETTINGS
     # ============================================
@@ -275,54 +260,49 @@ if dataset is not None and len(dataset) > 0:
         placeholder="Type a customer review here...",
         height=120
     )
-    
+
     predict_button = st.sidebar.button("🔮 Predict Sentiment", width='stretch')
-    
+
     st.sidebar.markdown("---")
     st.sidebar.header("📊 Model Selection")
     selected_model = st.sidebar.selectbox(
         "Choose model for prediction:",
         list(trained_models.keys())
     )
-    
+
     # ============================================
     # 3. SENTIMENT PREDICTION (MAIN SECTION)
     # ============================================
     if predict_button and user_review.strip():
         with st.spinner("🔄 Processing review..."):
-            # Preprocess user input
             processed_review = preprocess_reviews([user_review])[0]
             feature_vector = tfidf.transform([processed_review])
-            
-            # Get prediction from selected model
+
             model = trained_models[selected_model]
             prediction = model.predict(feature_vector)[0]
             prediction_proba = model.predict_proba(feature_vector)[0]
-            
-            # Map prediction to label
+
             label_map = {0: "Negative", 1: "Neutral", 2: "Positive"}
             sentiment_label = label_map[prediction]
             confidence = max(prediction_proba) * 100
-            
-            # Display result with emoji
+
             emoji_map = {"Positive": "😊", "Neutral": "😐", "Negative": "😞"}
-            
+
             col1, col2, col3 = st.columns(3)
-            
+
             with col1:
                 st.metric("Sentiment", sentiment_label)
             with col2:
                 st.metric("Confidence", f"{confidence:.2f}%")
             with col3:
                 st.metric("Model Used", selected_model)
-            
-            # Show confidence breakdown
+
             st.subheader("Confidence Score Breakdown")
             confidence_df = pd.DataFrame({
                 'Sentiment': ['Negative', 'Neutral', 'Positive'],
                 'Confidence (%)': prediction_proba * 100
             })
-            
+
             fig, ax = plt.subplots(figsize=(6, 2))
             colors = ['#ff6b6b', '#ffd93d', '#6bcf7f']
             ax.barh(confidence_df['Sentiment'], confidence_df['Confidence (%)'], color=colors)
@@ -332,48 +312,40 @@ if dataset is not None and len(dataset) > 0:
                 ax.text(v + 1, i, f'{v:.1f}%', va='center')
             plt.tight_layout()
             st.pyplot(fig)
-            
-            # Show the entered review
+
             st.subheader("📝 Your Review Analysis")
             st.write(f"**Review Text:** {user_review}")
             st.write(f"**Predicted Sentiment:** {sentiment_label} {emoji_map[sentiment_label]}")
             st.write(f"**Confidence Score:** {confidence:.2f}%")
-            
-            # Update word clouds with user review
+
             st.session_state.user_reviews[sentiment_label].append(user_review)
-    
+
     # ============================================
     # BATCH ANALYSIS FOR UPLOADED DATASET
     # ============================================
     if use_uploaded and st.sidebar.button("🔍 Analyze Entire Uploaded Dataset", width='stretch'):
         with st.spinner("🔄 Analyzing all reviews..."):
-            # Preprocess all reviews
             all_reviews = preprocess_reviews(dataset["reviews"])
             feature_vectors = tfidf.transform(all_reviews)
-            
-            # Get predictions from selected model
+
             model = trained_models[selected_model]
             predictions = model.predict(feature_vectors)
             prediction_probas = model.predict_proba(feature_vectors)
-            
-            # Map predictions to labels
+
             label_map = {0: "Negative", 1: "Neutral", 2: "Positive"}
             predicted_sentiments = [label_map[pred] for pred in predictions]
             confidences = [max(proba) * 100 for proba in prediction_probas]
-            
-            # Create results dataframe
+
             results_df = dataset.copy()
             results_df["Predicted_Sentiment"] = predicted_sentiments
             results_df["Confidence"] = confidences
-            
+
             st.success(f"✅ Analyzed {len(results_df)} reviews!")
-            
-            # Show summary
+
             st.subheader("📊 Batch Analysis Summary")
             summary = results_df["Predicted_Sentiment"].value_counts()
             st.write(summary)
-            
-            # Download button
+
             csv_data = results_df.to_csv(index=False)
             st.download_button(
                 label="📥 Download Results as CSV",
@@ -382,31 +354,29 @@ if dataset is not None and len(dataset) > 0:
                 mime="text/csv",
                 width='stretch'
             )
-            
-            # Show sample results
+
             st.subheader("🔍 Sample Results")
             st.dataframe(results_df.head(10), width='stretch')
-    
+
     # ============================================
     # 4. MODEL COMPARISON SECTION
     # ============================================
     st.markdown("---")
     st.header("📊 Model Performance Comparison")
-    
+
     col1, col2, col3 = st.columns(3)
-    
+
     for idx, (model_name, results) in enumerate(model_results.items()):
         with [col1, col2, col3][idx]:
             accuracy = results['accuracy'] * 100
             st.metric(model_name, f"{accuracy:.2f}%")
-    
-    # Accuracy comparison bar chart
+
     st.subheader("Model Accuracy Comparison")
     accuracy_data = pd.DataFrame({
         'Model': list(model_results.keys()),
         'Accuracy (%)': [results['accuracy'] * 100 for results in model_results.values()]
     })
-    
+
     fig, ax = plt.subplots(figsize=(8, 3))
     colors_models = ['#3498db', '#e74c3c', '#2ecc71']
     ax.bar(accuracy_data['Model'], accuracy_data['Accuracy (%)'], color=colors_models)
@@ -418,42 +388,47 @@ if dataset is not None and len(dataset) > 0:
     ax.legend()
     plt.tight_layout()
     st.pyplot(fig)
-    
+
     # ============================================
     # 5. CONFUSION MATRIX & CLASSIFICATION REPORT
     # ============================================
     st.markdown("---")
     st.header("🎯 Detailed Model Analysis")
-    
-    # Let user select which model to analyze
+
     analysis_model = st.selectbox(
         "Select model for detailed analysis:",
         list(model_results.keys()),
         key="analysis_model"
     )
-    
+
     col_left, col_right = st.columns(2)
-    
+
     with col_left:
         st.subheader(f"{analysis_model} - Confusion Matrix")
         cm = model_results[analysis_model]['confusion_matrix']
-        
+
         fig, ax = plt.subplots(figsize=(5, 4))
-        sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', 
-                    xticklabels=['Negative', 'Neutral', 'Positive'],
-                    yticklabels=['Negative', 'Neutral', 'Positive'],
-                    cbar=True, ax=ax)
+        sns.heatmap(
+            cm,
+            annot=True,
+            fmt='d',
+            cmap='Blues',
+            xticklabels=['Negative', 'Neutral', 'Positive'],
+            yticklabels=['Negative', 'Neutral', 'Positive'],
+            cbar=True,
+            ax=ax
+        )
         ax.set_ylabel('Actual')
         ax.set_xlabel('Predicted')
         plt.tight_layout()
         st.pyplot(fig)
-    
+
     with col_right:
         st.subheader(f"{analysis_model} - Classification Report")
         report = model_results[analysis_model]['classification_report']
         report_df = pd.DataFrame(report).transpose()
         st.dataframe(report_df, width='stretch')
-    
+
     # ============================================
     # 6. DATASET INSIGHTS
     # ============================================
@@ -468,7 +443,6 @@ if dataset is not None and len(dataset) > 0:
     with col3:
         st.metric("Unique Sentiments", len(dataset['sentiment'].unique()))
 
-    # Sentiment distribution
     st.subheader("Sentiment Distribution in Dataset")
     sentiment_counts = dataset['sentiment'].value_counts()
 
@@ -492,7 +466,6 @@ if dataset is not None and len(dataset) > 0:
     plt.tight_layout()
     st.pyplot(fig, clear_figure=True)
 
-    # Word Cloud Visualization
     st.subheader("☁️ Word Clouds")
 
     col1, col2, col3 = st.columns(3)
@@ -523,7 +496,6 @@ if dataset is not None and len(dataset) > 0:
             else:
                 st.info(f"No {sentiment.lower()} reviews to display.")
 
-    # Sample reviews
     st.subheader("Sample Reviews from Dataset")
 
     tab1, tab2, tab3 = st.tabs(["Positive", "Neutral", "Negative"])
@@ -549,7 +521,6 @@ if dataset is not None and len(dataset) > 0:
 else:
     st.error("Failed to load dataset. Please ensure 'Instruments_Reviews.csv' is in the same directory.")
 
-# Footer
 st.markdown("---")
 st.markdown("""
 <div style='text-align: center'>
